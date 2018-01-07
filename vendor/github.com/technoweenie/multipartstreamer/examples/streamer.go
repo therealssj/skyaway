@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/technoweenie/multipartstreamer"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/technoweenie/multipartstreamer"
 )
 
 func main() {

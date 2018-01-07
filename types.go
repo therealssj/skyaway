@@ -5,9 +5,9 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 )
 
 var nullString = []byte("null")

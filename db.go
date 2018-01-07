@@ -8,6 +8,8 @@ import (
 
 	"database/sql"
 
+	"strconv"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -256,7 +258,14 @@ func (db *DB) GetUserByNameOrId(identifier string) *User {
 	var user User
 	var err error
 
-	err = db.Get(&user, db.Rebind("select * from botuser where username=? or id=?"), identifier, identifier)
+	// Check if string is an integer
+	// If its an int then check for user id
+	// otherwise check for username
+	if _, err := strconv.Atoi(identifier); err == nil {
+		err = db.Get(&user, db.Rebind("select * from botuser where id=?"), identifier)
+	} else {
+		err = db.Get(&user, db.Rebind("select * from botuser where username=?"), identifier)
+	}
 
 	if err == sql.ErrNoRows {
 		return nil
