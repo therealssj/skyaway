@@ -440,10 +440,17 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 
 func (bot *Bot) handleCommandRegisterAddress(ctx *Context, command, args string) error {
 	skyAddr := strings.Fields(args)[0]
-	_, err := cipher.DecodeBase58Address(skyAddr)
 
+	// Parse address to check validity
+	_, err := cipher.DecodeBase58Address(skyAddr)
 	if err != nil {
-		return fmt.Errorf("failed to register sky address: %v", err)
+		return fmt.Errorf("invalid sky address: %v", err)
+	}
+
+	// Insert sky address into database
+	err = bot.db.PutSkyAddr(ctx.User.ID, skyAddr)
+	if err != nil {
+		return fmt.Errorf("failed to add sky address to db: %v", err)
 	}
 
 	return bot.Reply(ctx, fmt.Sprintf("Address %v registered!", skyAddr))

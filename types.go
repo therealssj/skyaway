@@ -26,6 +26,7 @@ type User struct {
 	UserName  string `db:"username" json:"username,omitempty"`
 	FirstName string `db:"first_name" json:"first_name,omitempty"`
 	LastName  string `db:"last_name" json:"last_name,omitempty"`
+	Address   string `db:"address" json:"address"`
 	Enlisted  bool   `json:"enlisted"`
 	Banned    bool   `json:"banned"`
 	Admin     bool   `json:"admin"`
@@ -36,7 +37,9 @@ type User struct {
 type Participant struct {
 	EventID   int      `db:"event_id" json:"event_id"`
 	UserID    int      `db:"user_id" json:"user_id"`
+	Address   string   `db:"address" json:"address"`
 	UserName  string   `db:"username" json:"username,omitempty"`
+	FullName  string   `db:"fullname" json:"fullname"`
 	Coins     int      `db:"coins" json:"coins"`
 	ClaimedAt NullTime `db:"claimed_at" json:"claimed_at,omitempty"`
 }

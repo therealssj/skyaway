@@ -364,6 +364,12 @@ func (db *DB) GetUserCount(banned bool) (int, error) {
 	return count, nil
 }
 
+func (db *DB) PutSkyAddr(uid int, addr string) error {
+	_, err := db.Exec(db.Rebind(`update botuser set address=? where id=?`), addr, uid)
+
+	return err
+}
+
 func (db *DB) PutUser(u *User) error {
 	if u.exists {
 		_, err := db.Exec(db.Rebind(`
