@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"github.com/qor/admin"
+	"unsafe"
 )
 
 func niceDuration(d time.Duration) string {

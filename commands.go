@@ -116,6 +116,11 @@ var commands = Commands{
 	},
 	Command{
 		true,
+		"listadmins",
+		(*Bot).handleCommandListAdmins,
+	},
+	Command{
+		true,
 		"listwinners",
 		(*Bot).handleCommandListWinners,
 	},

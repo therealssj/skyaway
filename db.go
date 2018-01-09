@@ -290,6 +290,18 @@ func (db *DB) GetUsers(banned bool) ([]User, error) {
 	return users, nil
 }
 
+func (db *DB) GetAdmins() ([]User, error) {
+	var users []User
+
+	err := db.Select(&users, db.Rebind("select * from botuser where admin=true"))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 func (db *DB) GetWinners(eventID int) ([]Participant, error) {
 	var winners []Participant
 

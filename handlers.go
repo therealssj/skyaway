@@ -11,6 +11,7 @@ import (
 
 	"github.com/bcampbell/fuzzytime"
 	"gopkg.in/telegram-bot-api.v4"
+	"os/user"
 )
 
 // Handler for help command
@@ -37,6 +38,7 @@ func (bot *Bot) handleCommandHelp(ctx *Context, command, args string) error {
 /usercount - return number of users
 /users - return all users in list
 /bannedusers - return all users in banned list
+/listadmins - return list of all admins
 /listwinners - return a list of content winners`)
 	}
 
@@ -364,6 +366,27 @@ func (bot *Bot) handleCommandUsersParsed(ctx *Context, banned bool) error {
 		return bot.Reply(ctx, strings.Join(lines, "\n"))
 	} else {
 		return bot.Reply(ctx, "no users in the list")
+	}
+}
+
+func (bot *Bot) handleCommandListAdmins(ctx *Context, command, args string) error {
+	admins, err := bot.db.GetAdmins()
+
+	if err != nil {
+		return fmt.Errorf("failed to get admins from db: %v", err)
+	}
+
+	var lines []string
+
+	for i, admin := range admins {
+		lines = append(lines, fmt.Sprintf(
+			"%d. %d: %s", (i + 1), admin.ID, admin.NameAndTags(),
+		))
+	}
+	if len(lines) > 0 {
+		return bot.Reply(ctx, strings.Join(lines, "\n"))
+	} else {
+		return bot.Reply(ctx, "no admins")
 	}
 }
 
