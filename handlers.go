@@ -10,9 +10,8 @@ import (
 	"time"
 
 	"github.com/bcampbell/fuzzytime"
-	"gopkg.in/telegram-bot-api.v4"
 	"github.com/skycoin/skycoin/src/cipher"
-
+	"gopkg.in/telegram-bot-api.v4"
 )
 
 // Handler for help command
@@ -336,7 +335,7 @@ func (bot *Bot) handleCommandCurrentEvent(ctx *Context, banned bool) error {
 	var lines []string
 	for i, user := range users {
 		lines = append(lines, fmt.Sprintf(
-			"%d. %d: %s", (i + 1), user.ID, user.NameAndTags(),
+			"%d. %d: %s", (i+1), user.ID, user.NameAndTags(),
 		))
 	}
 	if len(lines) > 0 {
@@ -369,7 +368,7 @@ func (bot *Bot) handleCommandUsersParsed(ctx *Context, banned bool) error {
 	var lines []string
 	for i, user := range users {
 		lines = append(lines, fmt.Sprintf(
-			"%d. %d: %s", (i + 1), user.ID, user.NameAndTags(),
+			"%d. %d: %s", (i+1), user.ID, user.NameAndTags(),
 		))
 	}
 	if len(lines) > 0 {
@@ -390,7 +389,7 @@ func (bot *Bot) handleCommandListAdmins(ctx *Context, command, args string) erro
 
 	for i, admin := range admins {
 		lines = append(lines, fmt.Sprintf(
-			"%d. %d: %s", (i + 1), admin.ID, admin.NameAndTags(),
+			"%d. %d: %s", (i+1), admin.ID, admin.NameAndTags(),
 		))
 	}
 	if len(lines) > 0 {
@@ -429,7 +428,7 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 	var lines []string
 	for i, winner := range winners {
 		lines = append(lines, fmt.Sprintf(
-			"%d. %d: %s: coinswon -> %d", (i + 1), winner.UserID, winner.UserName, winner.Coins,
+			"%d. %d: %s: coinswon -> %d", (i+1), winner.UserID, winner.UserName, winner.Coins,
 		))
 	}
 	if len(lines) > 0 {
@@ -474,14 +473,17 @@ func (bot *Bot) handleDirectMessageFallback(ctx *Context, text string) (bool, er
 		canTellWhen := !event.Surprise
 
 		if !started {
+			// Dont show event if its a surprise event
 			if canTellWhen {
 				return true, bot.Reply(ctx, fmt.Sprintf(
 					"event starts in %s",
 					niceDuration(time.Until(event.ScheduledAt.Time)),
 				))
-			} else {
-				return true, bot.Reply(ctx, "event has not started yet, come back later")
 			}
+		} else {
+			// If there is a current event going on then show time until end
+			endsAt := event.StartedAt.Time.Add(event.Duration.Duration)
+			return true, bot.Reply(ctx, fmt.Sprintf("Current event ends in %s", niceDuration(time.Until(endsAt))))
 		}
 	}
 
@@ -534,7 +536,7 @@ func parseScheduleEventArgs(args string) (coins int, start time.Time, duration D
 	surprise = words[len(words)-1] == "surprise"
 	if surprise {
 		// cut out the first and last word
-		words = words[1: len(words)-1]
+		words = words[1 : len(words)-1]
 	} else {
 		// cut out the first word
 		words = words[1:len(words)]
