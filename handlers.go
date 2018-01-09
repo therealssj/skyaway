@@ -282,7 +282,7 @@ func (bot *Bot) handleCommandStartEvent(ctx *Context, command, args string) erro
 		return bot.Reply(ctx, "malformed coins format: use an integer number")
 	}
 
-	dur, err := parseDuration(words[1])
+	dur, err := time.ParseDuration(words[1])
 
 	if err != nil {
 		return bot.Reply(ctx, "malformed duration format")
