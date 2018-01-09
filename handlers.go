@@ -11,7 +11,8 @@ import (
 
 	"github.com/bcampbell/fuzzytime"
 	"gopkg.in/telegram-bot-api.v4"
-	"os/user"
+	"github.com/skycoin/skycoin/src/cipher"
+
 )
 
 // Handler for help command
@@ -23,29 +24,38 @@ func (bot *Bot) handleCommandHelp(ctx *Context, command, args string) error {
 /help - this text
 /settings
 
+---- Event Commands ----
 /scheduleevent [coins] [ISO timestamp, or human readable] [duration] [surprise] - start an event at timestamp and duration in hours
 /cancelevent - cancel a scheduled event
 /stopevent - stop current event
 /startevent [number of coins] [duration] - start an event immediately
 /listevent  - list the current event (admins can also see surprise events)
+
+
+---- User Commands ----
 /adduser [username or id] - force add user to eligible list
 /makeadmin [username] - make a user an admin
 /removeadmin [username] - remove user from admin position
 /banuser [username or id] - blacklist user from eligible list
 /unbanuser [username or id] - remove user from blacklist
-/announce [msg] - send announcement
-/announceevent - force send current scheduled or ongoing event announcement
 /usercount - return number of users
 /users - return all users in list
 /bannedusers - return all users in banned list
 /listadmins - return list of all admins
-/listwinners - return a list of content winners`)
+/listwinners - return a list of content winners
+/registeraddress - register/update your sky address
+
+---- Announcement Commands ----
+/announce [msg] - send announcement
+/announceevent - force send current scheduled or ongoing event announcement
+`)
 	}
 
 	return bot.Reply(ctx, `
 /start
 /help - this text
-/listevent - lists the current event`)
+/listevent - lists the current event
+/registeraddress - register/update your sky address`)
 }
 
 // Handler for start command
@@ -427,6 +437,17 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 	} else {
 		return bot.Reply(ctx, "no winners, that's weird")
 	}
+}
+
+func (bot *Bot) handleCommandRegisterAddress(ctx *Context, command, args string) error {
+	skyAddr := strings.Fields(args)[0]
+	_, err := cipher.DecodeBase58Address(skyAddr)
+
+	if err != nil {
+		return fmt.Errorf("failed to register sky address: %v", err)
+	}
+
+	return bot.Reply(ctx, fmt.Sprintf("Address %v registered!", skyAddr))
 }
 
 // Handler for listvars command

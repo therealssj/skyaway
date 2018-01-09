@@ -126,6 +126,11 @@ var commands = Commands{
 	},
 	Command{
 		true,
+		"registeraddress",
+		(*Bot).handleCommandRegisterAddress,
+	},
+	Command{
+		true,
 		"listvars",
 		(*Bot).handleCommandListVars,
 	},
