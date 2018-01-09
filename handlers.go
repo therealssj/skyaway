@@ -324,7 +324,7 @@ func (bot *Bot) handleCommandCurrentEvent(ctx *Context, banned bool) error {
 	var lines []string
 	for i, user := range users {
 		lines = append(lines, fmt.Sprintf(
-			"%d. %d: %s", (i+1), user.ID, user.NameAndTags(),
+			"%d. %d: %s", (i + 1), user.ID, user.NameAndTags(),
 		))
 	}
 	if len(lines) > 0 {
@@ -357,7 +357,7 @@ func (bot *Bot) handleCommandUsersParsed(ctx *Context, banned bool) error {
 	var lines []string
 	for i, user := range users {
 		lines = append(lines, fmt.Sprintf(
-			"%d. %d: %s", (i+1), user.ID, user.NameAndTags(),
+			"%d. %d: %s", (i + 1), user.ID, user.NameAndTags(),
 		))
 	}
 	if len(lines) > 0 {
@@ -396,7 +396,7 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 	var lines []string
 	for i, winner := range winners {
 		lines = append(lines, fmt.Sprintf(
-			"%d. %d: %s: coinswon -> %d", (i+1), winner.UserID, winner.UserName, winner.Coins,
+			"%d. %d: %s: coinswon -> %d", (i + 1), winner.UserID, winner.UserName, winner.Coins,
 		))
 	}
 	if len(lines) > 0 {
@@ -405,6 +405,23 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 		return bot.Reply(ctx, "no winners, that's weird")
 	}
 }
+
+// Handler for listvars command
+func (bot *Bot) handleCommandListVars(ctx *Context, command, args string) error {
+	return bot.Reply(ctx, "announce_every")
+}
+
+// Handler for setvar command
+func (bot *Bot) handleCommandSetVar(ctx *Context, command, args string) error {
+	return nil
+}
+
+// Handler for getvar command
+func (bot *Bot) handleCommandGetVar(ctx *Context, command, args string) error {
+
+	return nil
+}
+
 func (bot *Bot) handleDirectMessageFallback(ctx *Context, text string) (bool, error) {
 	event := bot.db.GetCurrentEvent()
 
@@ -473,7 +490,7 @@ func parseScheduleEventArgs(args string) (coins int, start time.Time, duration D
 	surprise = words[len(words)-1] == "surprise"
 	if surprise {
 		// cut out the first and last word
-		words = words[1 : len(words)-1]
+		words = words[1: len(words)-1]
 	} else {
 		// cut out the first word
 		words = words[1:len(words)]

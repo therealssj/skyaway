@@ -119,4 +119,19 @@ var commands = Commands{
 		"listwinners",
 		(*Bot).handleCommandListWinners,
 	},
+	Command{
+		true,
+		"listvars",
+		(*Bot).handleCommandListVars,
+	},
+	Command{
+		true,
+		"setvar",
+		(*Bot).handleCommandSetVar,
+	},
+	Command{
+		true,
+		"getvar",
+		(*Bot).handleCommandGetVar,
+	},
 }
