@@ -48,6 +48,12 @@ func (bot *Bot) handleCommandHelp(ctx *Context, command, args string) error {
 ---- Announcement Commands ----
 /announce [msg] - send announcement
 /announceevent - force send current scheduled or ongoing event announcement
+
+
+---- Settings Commands ----
+/listvars - list all available config vars
+/setvar [var] [value] - set value for a config var
+/getvar [var] - get value of a config var
 `)
 	}
 
@@ -57,6 +63,9 @@ func (bot *Bot) handleCommandHelp(ctx *Context, command, args string) error {
 /listevent - lists the current event
 /registeraddress - register/update your sky address`)
 }
+
+// @TODO create a bootstrap function to automatically generate a list of config vars
+var configVars = []string{"announce_every", "bot_msg_announce_interval"}
 
 // Handler for start command
 func (bot *Bot) handleCommandStart(ctx *Context, command, args string) error {
@@ -536,18 +545,55 @@ func (bot *Bot) handleCommandRegisterAddress(ctx *Context, command, args string)
 
 // Handler for listvars command
 func (bot *Bot) handleCommandListVars(ctx *Context, command, args string) error {
-	return bot.Reply(ctx, "announce_every")
+	return bot.Reply(ctx, strings.Join(configVars, "\n"))
 }
 
 // Handler for setvar command
 func (bot *Bot) handleCommandSetVar(ctx *Context, command, args string) error {
-	return nil
+	words := strings.Fields(args)
+
+	if len(args) != 2 {
+		return fmt.Errorf("invalid number of arguments: %v", len(args))
+	}
+
+	switch words[0] {
+	case configVars[0]:
+		dur, err := time.ParseDuration(words[1])
+		if err != nil {
+			fmt.Errorf("invalid duration for announce interval: %v", words[1])
+		}
+
+		bot.config.AnnounceEvery = NewDuration(dur)
+	case configVars[1]:
+		dur, err := time.ParseDuration(words[1])
+		if err != nil {
+			fmt.Errorf("invalid duration for bot msg interval: %v", words[1])
+		}
+
+		bot.config.BotMsgAnnounceInterval = NewDuration(dur)
+	default:
+		return bot.Reply(ctx, "invalid config var")
+	}
+
+	return bot.Reply(ctx, fmt.Sprintf("%s new value: %s", words[0], words[1]))
 }
 
 // Handler for getvar command
 func (bot *Bot) handleCommandGetVar(ctx *Context, command, args string) error {
+	words := strings.Fields(args)
 
-	return nil
+	if len(args) != 1 {
+		return fmt.Errorf("invalid number of arguments: %v", len(args))
+	}
+
+	switch words[0] {
+	case configVars[0]:
+		return bot.Reply(ctx, fmt.Sprintf("Current valie of %s is %s", words[0], bot.config.AnnounceEvery.Duration.String()))
+	case configVars[1]:
+		return bot.Reply(ctx, fmt.Sprintf("Current valie of %s is %s", words[1], bot.config.BotMsgAnnounceInterval.Duration.String()))
+	default:
+		return bot.Reply(ctx, "invalid config var")
+	}
 }
 
 func (bot *Bot) handleDirectMessageFallback(ctx *Context, text string) (bool, error) {
