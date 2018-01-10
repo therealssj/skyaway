@@ -41,7 +41,7 @@ func (bot *Bot) handleCommandHelp(ctx *Context, command, args string) error {
 /users - return all users in list
 /bannedusers - return all users in banned list
 /listadmins - return list of all admins
-/listwinners - return a list of content winners
+/listwinners [event] [number] - choose random number of winners from the participating list
 /registeraddress - register/update your sky address
 
 ---- Announcement Commands ----
@@ -404,31 +404,46 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 	var eventID int
 	var err error
 
+	words := strings.Fields(args)
+
+	if len(words) > 2 {
+		return bot.Reply(ctx, "invalid number of arguments")
+	}
+
+	// Get number of winners to choose
+	num, err := strconv.Atoi(words[1])
+	if err != nil {
+		return bot.Reply(ctx, fmt.Sprintf("invalid number argument: %s", words[1]))
+	}
+
 	// get last or current event id
-	if args == "last" {
+	event := words[0]
+	if event == "last" {
 		event := bot.db.GetLastEvent()
 		eventID = event.ID
-	} else if args == "current" {
+	} else if event == "current" {
 		event := bot.db.GetCurrentEvent()
 		eventID = event.ID
 	} else {
 		// check if input argument is an integer
-		eventID, err = strconv.Atoi(args)
+		eventID, err = strconv.Atoi(event)
 		if err != nil {
-			return bot.Reply(ctx, fmt.Sprintf("invalid input argument: %s", args))
+			return bot.Reply(ctx, fmt.Sprintf("invalid event ID: %s", words[0]))
 		}
 	}
 
-	winners, err := bot.db.GetWinners(eventID)
-
+	participants, err := bot.db.GetWinners(eventID)
 	if err != nil {
 		return fmt.Errorf("failed to get users from db: %v", err)
 	}
 
+	// Select n random winners
+	winners := getRandomWinners(participants, num)
+
 	var lines []string
 	for i, winner := range winners {
 		lines = append(lines, fmt.Sprintf(
-			"%d. %d: %s: coinswon -> %d", (i+1), winner.UserID, winner.UserName, winner.Coins,
+			"%d. %d: %s: coinswon -> %d, skyaddress -> (%s)", (i+1), winner.UserID, winner.UserName, winner.Coins, winner.Address,
 		))
 	}
 	if len(lines) > 0 {

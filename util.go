@@ -2,6 +2,7 @@ package skyaway
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -79,6 +80,17 @@ func formatEventAsMarkdown(event *Event, public bool) string {
 	}
 
 	return strings.Join(fields, "\n")
+}
+
+func getRandomWinners(participants []Participant, n int) []Participant {
+	rand.Seed(time.Now().UnixNano())
+
+	winners := make([]Participant, n)
+	for i := range winners {
+		winners[i] = participants[rand.Intn(len(participants))]
+	}
+
+	return winners
 }
 
 func parseDuration(args string) (time.Duration, error) {
