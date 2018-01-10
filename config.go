@@ -13,9 +13,11 @@ type WalletConfig struct {
 }
 
 type Config struct {
-	Debug         bool           `json:"debug"`
-	Token         string         `json:"token"`
-	ChatID        int64          `json:"chat_id"`
-	Database      DatabaseConfig `json:"database"`
-	AnnounceEvery Duration       `json:"announce_every"`
+	Debug                  bool           `json:"debug"`
+	Token                  string         `json:"token"`
+	ChatID                 int64          `json:"chat_id"`
+	Database               DatabaseConfig `json:"database"`
+	AnnounceEvery          Duration       `json:"announce_every"`
+	BotMsgAnnounceInterval Duration       `json:"bot_msg_announce_interval"`
+	BotRegisterMsg         string         `json:"bot_register_msg"`
 }

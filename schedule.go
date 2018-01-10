@@ -10,6 +10,7 @@ type task int
 
 const (
 	nothing task = iota
+	sendbotmsg
 	announceEventStart
 	startEvent
 	announceEventEnd
@@ -70,6 +71,9 @@ func (bot *Bot) perform(tsk task) {
 
 	noctx := &Context{}
 	switch tsk {
+	case sendbotmsg:
+		bot.Send(&Context{}, "yell", "text", bot.config.BotRegisterMsg)
+		LastBotRegisterMsg = time.Now()
 	case announceEventStart:
 		if event.Surprise {
 			log.Printf("not announcing the future start of a surprise event")
@@ -124,8 +128,14 @@ func (bot *Bot) maintain() {
 		close(bot.rescheduleChan)
 	}()
 
+	// Start sending register with bot msg
+	bot.perform(sendbotmsg)
 	var timer *time.Timer
 	for {
+		// Keep sending bot register msg at defined interval
+		if bot.config.BotMsgAnnounceInterval.Valid && time.Now().Sub(LastBotRegisterMsg) > bot.config.BotMsgAnnounceInterval.Duration {
+			bot.perform(sendbotmsg)
+		}
 		tsk, future := bot.subSchedule()
 		if tsk == nothing {
 			<-bot.rescheduleChan

@@ -1,11 +1,12 @@
 {
 	"debug": true,
 	"token": "123:AAaaaSSsssDDddd",
-	"password": "qwerty", // what is this?
 	"chat_id": -2250,
 	"database": {
 		"driver": "postgres",
 		"source": "dbname=skyaway user=skyaway"
 	},
-	"announce_every": "10s"
+	"announce_every": "1h",
+	"start_announce_interval": "1h",
+	"bot_register_msg": "Register your sky address with the bot by sending it a personal message"
 }

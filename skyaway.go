@@ -6,6 +6,8 @@ import (
 	"log"
 	"strings"
 
+	"time"
+
 	"gopkg.in/telegram-bot-api.v4"
 )
 
@@ -30,6 +32,7 @@ type MessageHandler func(*Bot, *Context, string) (bool, error)
 
 var EventExists = errors.New("already have a current event")
 var EventDoesNotExist = errors.New("no current event")
+var LastBotRegisterMsg time.Time
 
 // Starts the current event immediately and return the event, if it exists.
 // Returns `EventDoesNotExist` otherwise.
@@ -474,6 +477,10 @@ func (bot *Bot) Start() error {
 	updates, err := bot.telegram.GetUpdatesChan(u)
 	if err != nil {
 		return fmt.Errorf("failed to create telegram updates channel: %v", err)
+	}
+
+	if err != nil {
+		return fmt.Errorf("invalid bot msg announce interval: %v", err)
 	}
 
 	go bot.maintain()
