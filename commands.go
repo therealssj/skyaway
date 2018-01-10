@@ -126,6 +126,11 @@ var commands = Commands{
 	},
 	Command{
 		true,
+		"resetwinners",
+		(*Bot).handleCommandResetWinners,
+	},
+	Command{
+		true,
 		"registeraddress",
 		(*Bot).handleCommandRegisterAddress,
 	},

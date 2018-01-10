@@ -41,6 +41,8 @@ func (bot *Bot) handleCommandHelp(ctx *Context, command, args string) error {
 /bannedusers - return all users in banned list
 /listadmins - return list of all admins
 /listwinners [event] [number] - choose random number of winners from the participating list
+								event can have values last, current or numeric event id
+/resetwinners [event] - event can have values last, current or numeric event id
 /registeraddress - register/update your sky address
 
 ---- Announcement Commands ----
@@ -479,6 +481,41 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 	}
 }
 
+// Handler for resetwinners command
+func (bot *Bot) handleCommandResetWinners(ctx *Context, command, args string) error {
+	var eventID int
+	var err error
+	words := strings.Fields(args)
+
+	if len(words) != 1 {
+		return fmt.Errorf("invalid number of arguments: %v", len(words))
+	}
+
+	// get last or current event id
+	event := words[0]
+	if event == "last" {
+		event := bot.db.GetLastEvent()
+		eventID = event.ID
+	} else if event == "current" {
+		event := bot.db.GetCurrentEvent()
+		eventID = event.ID
+	} else {
+		// check if input argument is an integer
+		eventID, err = strconv.Atoi(event)
+		if err != nil {
+			return bot.Reply(ctx, fmt.Sprintf("invalid event ID: %s", words[0]))
+		}
+	}
+
+	err = bot.db.ResetWinners(eventID)
+	if err != nil {
+		return fmt.Errorf("unable to reset winners: %v", err)
+	}
+
+	return bot.Reply(ctx, fmt.Sprintf("Reset winners for event %v done", eventID))
+}
+
+// Handler for registeraddress command
 func (bot *Bot) handleCommandRegisterAddress(ctx *Context, command, args string) error {
 	skyAddr := strings.Fields(args)[0]
 

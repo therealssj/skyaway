@@ -331,8 +331,12 @@ func (db *DB) GetParticipants(eventID int, winners bool) ([]Participant, error) 
 }
 
 func (db *DB) SetWinners(eventID int, winners string) error {
-	_, err := db.Exec(db.Rebind(`update participant set is_winner=true where event_id=? and user_id in (?)`), eventID, winners)
+	_, err := db.Exec(db.Rebind(`update participant set winner=true where event_id=? and user_id in (?)`), eventID, winners)
+	return err
+}
 
+func (db *DB) ResetWinners(eventID int) error {
+	_, err := db.Exec(db.Rebind(`update participant set winner=false where event_id=?`), eventID)
 	return err
 }
 
