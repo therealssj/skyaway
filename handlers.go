@@ -30,7 +30,6 @@ func (bot *Bot) handleCommandHelp(ctx *Context, command, args string) error {
 /startevent [number of coins] [duration] - start an event immediately
 /listevent  - list the current event (admins can also see surprise events)
 
-
 ---- User Commands ----
 /adduser [username or id] - force add user to eligible list
 /makeadmin [username] - make a user an admin
@@ -432,13 +431,40 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 		}
 	}
 
-	participants, err := bot.db.GetWinners(eventID)
+	// Check if we already have winners for particular event
+	winnersAlready, err := bot.db.WinnersAlreadySelected(eventID)
 	if err != nil {
-		return fmt.Errorf("failed to get users from db: %v", err)
+		return bot.Reply(ctx, fmt.Sprintf("failed to get winners from db: %v", err))
 	}
 
-	// Select n random winners
-	winners := getRandomWinners(participants, num)
+	var winners []Participant
+	if winnersAlready {
+		winners, err = bot.db.GetParticipants(eventID, true)
+		if err != nil {
+			return fmt.Errorf("failed to get existing winners from db: %v", err)
+		}
+	} else {
+		var participants []Participant
+		participants, err = bot.db.GetParticipants(eventID, false)
+		if err != nil {
+			return fmt.Errorf("failed to get winners from db: %v", err)
+		}
+
+		// Select n random winners
+		winners = getRandomWinners(participants, num)
+
+		// Create a list of user ids
+		winnerList := make([]string, num)
+		for _, winner := range winners {
+			winnerList = append(winnerList, strconv.Itoa(winner.UserID))
+		}
+
+		// Set winners
+		err = bot.db.SetWinners(eventID, strings.Join(winnerList, ","))
+		if err != nil {
+			return fmt.Errorf("failed to set winners in db: %v", err)
+		}
+	}
 
 	var lines []string
 	for i, winner := range winners {

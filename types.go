@@ -41,6 +41,7 @@ type Participant struct {
 	UserName  string   `db:"username" json:"username,omitempty"`
 	FullName  string   `db:"fullname" json:"fullname"`
 	Coins     int      `db:"coins" json:"coins"`
+	Winner    bool     `db:"winner" json:"winner"`
 	ClaimedAt NullTime `db:"claimed_at" json:"claimed_at,omitempty"`
 }
 

@@ -302,16 +302,38 @@ func (db *DB) GetAdmins() ([]User, error) {
 	return users, nil
 }
 
-func (db *DB) GetWinners(eventID int) ([]Participant, error) {
-	var winners []Participant
+func (db *DB) WinnersAlreadySelected(eventID int) (bool, error) {
+	var num int
+	// Get winner count for particular event
+	err := db.Select(&num, db.Rebind("Select count(*) from participant where event_id=? and winner=true limit 1"), eventID)
 
-	err := db.Select(&winners, db.Rebind("Select * from participant where event_id=?"), eventID)
+	if err != nil {
+		return false, err
+	}
+
+	return num > 0, nil
+}
+
+func (db *DB) GetParticipants(eventID int, winners bool) ([]Participant, error) {
+	var participants []Participant
+	var err error
+	if winners {
+		err = db.Select(&participants, db.Rebind("Select * from participant where event_id=? and winner=true"), eventID)
+	} else {
+		err = db.Select(&participants, db.Rebind("Select * from participant where event_id=?"), eventID)
+	}
 
 	if err != nil {
 		return []Participant{}, nil
 	}
 
-	return winners, nil
+	return participants, nil
+}
+
+func (db *DB) SetWinners(eventID int, winners string) error {
+	_, err := db.Exec(db.Rebind(`update participant set is_winner=true where event_id=? and user_id in (?)`), eventID, winners)
+
+	return err
 }
 
 func (db *DB) ClaimCoins(user *User, event *Event) error {
