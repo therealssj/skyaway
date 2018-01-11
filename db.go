@@ -64,7 +64,10 @@ func (db *DB) StartNewEvent(coins int, duration Duration) error {
 }
 
 func (e *Event) addParticipants(tx *sqlx.Tx) error {
-	var users []TempUser
+	var users []struct {
+		ID       int    `db:"id"`
+		UserName string `db:"username"`
+	}
 	err := tx.Select(&users, "SELECT id, username FROM botuser WHERE NOT banned AND enlisted")
 	if err != nil {
 		return fmt.Errorf("failed to select eligible users for coin distribution: %v", err)
@@ -84,9 +87,9 @@ func (e *Event) addParticipants(tx *sqlx.Tx) error {
 		coins := coinsPerUser + rand.Intn(volatility+1)
 		_, err := tx.Exec(tx.Rebind(`
 			insert into participant (
-				event_id, user_id, username, coins
-			) values (?, ?, ?, ?)`),
-			e.ID, user.ID, user.UserName, coins,
+				event_id, user_id,  coins
+			) values (?, ?, ?)`),
+			e.ID, user.ID, coins,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to add user to event participants: %v", err)
@@ -231,6 +234,7 @@ func (db *DB) GetUser(id int) *User {
 	}
 
 	if err != nil {
+		panic(err)
 		return nil
 	}
 
@@ -247,6 +251,7 @@ func (db *DB) GetUserByName(name string) *User {
 	}
 
 	if err != nil {
+		panic(err)
 		return nil
 	}
 
@@ -267,11 +272,13 @@ func (db *DB) GetUserByNameOrId(identifier string) *User {
 		err = db.Get(&user, db.Rebind("select * from botuser where username=?"), identifier)
 	}
 
-	if err == sql.ErrNoRows {
+	// @TODO improve this check
+	if err == sql.ErrNoRows || user.ID == 0 {
 		return nil
 	}
 
 	if err != nil {
+		panic(err)
 		return nil
 	}
 
@@ -303,28 +310,27 @@ func (db *DB) GetAdmins() ([]User, error) {
 }
 
 func (db *DB) WinnersAlreadySelected(eventID int) (bool, error) {
-	var num int
+	var num []int
 	// Get winner count for particular event
 	err := db.Select(&num, db.Rebind("Select count(*) from participant where event_id=? and winner=true limit 1"), eventID)
-
 	if err != nil {
 		return false, err
 	}
 
-	return num > 0, nil
+	return num[0] > 0, nil
 }
 
-func (db *DB) GetParticipants(eventID int, winners bool) ([]Participant, error) {
-	var participants []Participant
+func (db *DB) GetParticipants(eventID int, winner bool) ([]Winner, error) {
+	var participants []Winner
 	var err error
-	if winners {
-		err = db.Select(&participants, db.Rebind("Select * from participant where event_id=? and winner=true"), eventID)
-	} else {
-		err = db.Select(&participants, db.Rebind("Select * from participant where event_id=?"), eventID)
-	}
+
+	baseQuery := "Select participant.user_id, participant.coins,participant.winner, botuser.username, " +
+		"botuser.first_name, botuser.last_name, botuser.address from participant,botuser where botuser.id=participant.user_id and participant.event_id=?"
+
+	err = db.Select(&participants, db.Rebind(baseQuery+" and winner=?"), eventID, winner)
 
 	if err != nil {
-		return []Participant{}, nil
+		return []Winner{}, err
 	}
 
 	return participants, nil
@@ -394,6 +400,17 @@ func (db *DB) PutSkyAddr(uid int, addr string) error {
 	_, err := db.Exec(db.Rebind(`update botuser set address=? where id=?`), addr, uid)
 
 	return err
+}
+
+func (db *DB) GetSkyAddr(uid int) (string, error) {
+	var skyAddr sql.NullString
+
+	err := db.Get(&skyAddr, db.Rebind("select address from botuser where id=?"), uid)
+	if err != nil {
+		return "", err
+	}
+
+	return skyAddr.String, nil
 }
 
 func (db *DB) PutUser(u *User) error {

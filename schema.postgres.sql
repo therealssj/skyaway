@@ -5,7 +5,7 @@ CREATE TABLE botuser (
   username   TEXT,
   first_name TEXT,
   last_name  TEXT,
-  address    TEXT, -- skycoin address
+  address    TEXT DEFAULT NULL, -- skycoin address
   enlisted   BOOL            NOT NULL DEFAULT TRUE, -- is in the group
   banned     BOOL            NOT NULL DEFAULT FALSE, -- is disabled even if in the group
   admin      BOOL            NOT NULL DEFAULT FALSE  -- can issue commands
@@ -31,9 +31,6 @@ CREATE TABLE event (
 CREATE TABLE participant (
   event_id   INT  NOT NULL REFERENCES event (id),
   user_id    INT  NOT NULL REFERENCES botuser (id),
-  address    TEXT NOT NULL REFERENCES botuser (address),
-  username   TEXT,
-  fullname   TEXT, -- first_name + last_name
   coins      INT  NOT NULL, -- precalculated number of coins for the user
   winner     BOOL NOT NULL DEFAULT FALSE, -- whether this participant was chosen as a winner
   claimed_at TIMESTAMP WITH TIME zone, -- null if not claimed yet

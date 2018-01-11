@@ -64,7 +64,7 @@ func (bot *Bot) subSchedule() (task, time.Time) {
 
 func (bot *Bot) perform(tsk task) {
 	event := bot.db.GetCurrentEvent()
-	if event == nil {
+	if event == nil && tsk != sendbotmsg {
 		log.Print("failed to perform the scheduled task: no current event")
 		return
 	}
@@ -127,15 +127,9 @@ func (bot *Bot) maintain() {
 	defer func() {
 		close(bot.rescheduleChan)
 	}()
-
-	// Start sending register with bot msg
-	bot.perform(sendbotmsg)
 	var timer *time.Timer
 	for {
-		// Keep sending bot register msg at defined interval
-		if bot.config.BotMsgAnnounceInterval.Valid && time.Now().Sub(LastBotRegisterMsg) > bot.config.BotMsgAnnounceInterval.Duration {
-			bot.perform(sendbotmsg)
-		}
+
 		tsk, future := bot.subSchedule()
 		if tsk == nothing {
 			<-bot.rescheduleChan
@@ -154,6 +148,25 @@ func (bot *Bot) maintain() {
 			if !timer.Stop() {
 				<-timer.C
 			}
+		}
+	}
+}
+
+func (bot *Bot) botMsg() {
+	// Start sending register with bot msg
+	bot.perform(sendbotmsg)
+	var timer *time.Timer
+	for {
+
+		future := LastBotRegisterMsg.Add(bot.config.BotMsgAnnounceInterval.Duration)
+		if timer == nil {
+			timer = time.NewTimer(time.Until(future))
+		} else {
+			timer.Reset(time.Until(future))
+		}
+		select {
+		case <-timer.C:
+			bot.perform(sendbotmsg)
 		}
 	}
 }

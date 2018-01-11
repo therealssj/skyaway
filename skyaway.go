@@ -446,16 +446,19 @@ func (bot *Bot) handleUpdate(update *tgbotapi.Update) error {
 	if u := ctx.message.From; u != nil {
 		dbuser := bot.db.GetUser(u.ID)
 		if dbuser == nil {
-			log.Printf("message from untracked user: %s, adding to db", u.String())
-
-			dbuser = &User{
-				ID:        u.ID,
-				UserName:  u.UserName,
-				FirstName: u.FirstName,
-				LastName:  u.LastName,
-			}
-			if err := bot.db.PutUser(dbuser); err != nil {
-				return fmt.Errorf("failed to save the user: %v", err)
+			log.Printf("message from untracked user: %s", u.String())
+			if (ctx.message.Chat.IsGroup() || ctx.message.Chat.IsSuperGroup()) && ctx.message.Chat.ID == bot.config.ChatID {
+				dbuser = &User{
+					ID:        u.ID,
+					UserName:  u.UserName,
+					FirstName: u.FirstName,
+					LastName:  u.LastName,
+				}
+				if err := bot.db.PutUser(dbuser); err != nil {
+					return fmt.Errorf("failed to save the user: %v", err)
+				}
+			} else {
+				return bot.Reply(&ctx, "Please join the skycoin giveaway group.")
 			}
 		}
 		ctx.User = dbuser
@@ -484,6 +487,7 @@ func (bot *Bot) Start() error {
 	}
 
 	go bot.maintain()
+	go bot.botMsg()
 
 	for update := range updates {
 		if err := bot.handleUpdate(&update); err != nil {

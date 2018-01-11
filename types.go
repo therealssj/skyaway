@@ -2,10 +2,10 @@ package skyaway
 
 import (
 	"bytes"
+	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -22,14 +22,14 @@ func NewDuration(d time.Duration) Duration {
 }
 
 type User struct {
-	ID        int    `json:"id"`
-	UserName  string `db:"username" json:"username,omitempty"`
-	FirstName string `db:"first_name" json:"first_name,omitempty"`
-	LastName  string `db:"last_name" json:"last_name,omitempty"`
-	Address   string `db:"address" json:"address"`
-	Enlisted  bool   `json:"enlisted"`
-	Banned    bool   `json:"banned"`
-	Admin     bool   `json:"admin"`
+	ID        int            `json:"id"`
+	UserName  string         `db:"username" json:"username,omitempty"`
+	FirstName string         `db:"first_name" json:"first_name,omitempty"`
+	LastName  string         `db:"last_name" json:"last_name,omitempty"`
+	Address   sql.NullString `db:"address" json:"address"`
+	Enlisted  bool           `json:"enlisted"`
+	Banned    bool           `json:"banned"`
+	Admin     bool           `json:"admin"`
 
 	exists bool
 }
@@ -37,17 +37,19 @@ type User struct {
 type Participant struct {
 	EventID   int      `db:"event_id" json:"event_id"`
 	UserID    int      `db:"user_id" json:"user_id"`
-	Address   string   `db:"address" json:"address"`
-	UserName  string   `db:"username" json:"username,omitempty"`
-	FullName  string   `db:"fullname" json:"fullname"`
 	Coins     int      `db:"coins" json:"coins"`
 	Winner    bool     `db:"winner" json:"winner"`
 	ClaimedAt NullTime `db:"claimed_at" json:"claimed_at,omitempty"`
 }
 
-type TempUser struct {
-	ID       int    `db:"id"`
-	UserName string `db:"username"`
+type Winner struct {
+	UserID    int            `db:"user_id" json:"user_id"`
+	UserName  string         `db:"username" json:"username,omitempty"`
+	FirstName string         `db:"first_name" json:"first_name,omitempty"`
+	LastName  string         `db:"last_name" json:"last_name,omitempty"`
+	Address   sql.NullString `db:"address" json:"address"`
+	Coins     int            `db:"coins" json:"coins"`
+	Winner    bool           `db:"winner" json:"winner"`
 }
 
 func (u *User) NameAndTags() string {
@@ -62,7 +64,7 @@ func (u *User) NameAndTags() string {
 	// If username is hidden use userid
 	identifier := u.UserName
 	if identifier == "" {
-		identifier = strconv.Itoa(u.ID)
+		identifier = u.FirstName + " " + u.LastName
 	}
 
 	if len(tags) > 0 {

@@ -130,9 +130,14 @@ var commands = Commands{
 		(*Bot).handleCommandResetWinners,
 	},
 	Command{
-		true,
+		false,
 		"registeraddress",
 		(*Bot).handleCommandRegisterAddress,
+	},
+	Command{
+		false,
+		"showaddress",
+		(*Bot).handleCommandShowAddress,
 	},
 	Command{
 		true,

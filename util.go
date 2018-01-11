@@ -82,10 +82,10 @@ func formatEventAsMarkdown(event *Event, public bool) string {
 	return strings.Join(fields, "\n")
 }
 
-func getRandomWinners(participants []Participant, n int) []Participant {
+func getRandomWinners(participants []Winner, n int) []Winner {
 	rand.Seed(time.Now().UnixNano())
 
-	winners := make([]Participant, n)
+	winners := make([]Winner, n)
 	for i := range winners {
 		winners[i] = participants[rand.Intn(len(participants))]
 	}
@@ -100,6 +100,18 @@ func parseDuration(args string) (time.Duration, error) {
 	}
 
 	return time.ParseDuration(args)
+}
+
+func SplitToString(a []int, sep string) string {
+	if len(a) == 0 {
+		return ""
+	}
+
+	b := make([]string, len(a))
+	for i, v := range a {
+		b[i] = strconv.Itoa(v)
+	}
+	return strings.Join(b, sep)
 }
 
 func (bot *Bot) SetCommandHandler(admin bool, command string, handler CommandHandler) {

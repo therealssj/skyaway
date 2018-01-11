@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"io/ioutil"
+
 	"github.com/bcampbell/fuzzytime"
 	"github.com/skycoin/skycoin/src/cipher"
 	"gopkg.in/telegram-bot-api.v4"
@@ -40,15 +42,14 @@ func (bot *Bot) handleCommandHelp(ctx *Context, command, args string) error {
 /users - return all users in list
 /bannedusers - return all users in banned list
 /listadmins - return list of all admins
-/listwinners [event] [number] - choose random number of winners from the participating list
-								event can have values last, current or numeric event id
-/resetwinners [event] - event can have values last, current or numeric event id
-/registeraddress - register/update your sky address
+/listwinners [event] [number] - choose random number of winners from the participating list, event can have values last, current or numeric event id
+/resetwinners [event] - reset winners for an event. event can have values last, current or numeric event id
+/registeraddress [addr] - register/update your sky address
+/showaddress - show currently registered sky address
 
 ---- Announcement Commands ----
 /announce [msg] - send announcement
 /announceevent - force send current scheduled or ongoing event announcement
-
 
 ---- Settings Commands ----
 /listvars - list all available config vars
@@ -61,11 +62,14 @@ func (bot *Bot) handleCommandHelp(ctx *Context, command, args string) error {
 /start
 /help - this text
 /listevent - lists the current event
-/registeraddress - register/update your sky address`)
+/registeraddress [addr] - register/update your sky address
+/showaddress - show currently registered sky address`)
 }
 
 // @TODO create a bootstrap function to automatically generate a list of config vars
-var configVars = []string{"announce_every", "bot_msg_announce_interval"}
+// @TODO write a better implementation of var commands
+// @TODO create a bootstrap fucntion to handle function requirements automatically
+var configVars = []string{"announce_every", "bot_msg_announce_interval", "bot_register_msg"}
 
 // Handler for start command
 func (bot *Bot) handleCommandStart(ctx *Context, command, args string) error {
@@ -87,12 +91,18 @@ func (bot *Bot) handleCommandAddUser(ctx *Context, command, args string) error {
 	if dbuser == nil {
 		return bot.Reply(ctx, "no user by that name or id")
 	}
+
 	return bot.enableUserVerbosely(ctx, dbuser)
 }
 
 // Handler for promoteuser comamnd
 func (bot *Bot) handleCommandMakeAdmin(ctx *Context, command, args string) error {
 	identifier := args
+
+	if identifier == "" {
+		return fmt.Errorf("invalid argument")
+	}
+
 	dbuser := bot.db.GetUserByNameOrId(identifier)
 	if dbuser == nil {
 		return bot.Reply(ctx, "no user by that name")
@@ -106,6 +116,10 @@ func (bot *Bot) handleCommandMakeAdmin(ctx *Context, command, args string) error
 // Handler for promoteuser comamnd
 func (bot *Bot) handleCommandRemoveAdmin(ctx *Context, command, args string) error {
 	identifier := args
+	if identifier == "" {
+		return fmt.Errorf("invalid argument")
+	}
+
 	dbuser := bot.db.GetUserByNameOrId(identifier)
 	if dbuser == nil {
 		return bot.Reply(ctx, "no user by that name")
@@ -159,7 +173,6 @@ func (bot *Bot) handleCommandListEvent(ctx *Context, command, args string) error
 
 	// Check what type of event it is
 	if event.StartedAt.Valid {
-		fmt.Println(event.StartedAt.Time.Add(event.Duration.Duration))
 		return bot.Reply(ctx, fmt.Sprintf("Current event ends at  %s", event.StartedAt.Time.Add(event.Duration.Duration)))
 	} else if event.ScheduledAt.Valid {
 		return bot.Reply(ctx, fmt.Sprintf("Upcoming event starts at %s", event.ScheduledAt.Time))
@@ -177,6 +190,10 @@ func (bot *Bot) handleCommandListEvent(ctx *Context, command, args string) error
 // Handler for ban user command
 func (bot *Bot) handleCommandBanUser(ctx *Context, command, args string) error {
 	identifer := args
+	if identifer == "" {
+		return fmt.Errorf("invalid argument")
+	}
+
 	user := bot.db.GetUserByNameOrId(identifer)
 	if user == nil {
 		return bot.Reply(ctx, "no user by that name or id")
@@ -193,6 +210,10 @@ func (bot *Bot) handleCommandBanUser(ctx *Context, command, args string) error {
 // Handler for unban user command
 func (bot *Bot) handleCommandUnBanUser(ctx *Context, command, args string) error {
 	identifer := args
+	if identifer == "" {
+		return fmt.Errorf("invalid argument")
+	}
+
 	user := bot.db.GetUserByNameOrId(identifer)
 	if user == nil {
 		return bot.Reply(ctx, "no user by that name or id")
@@ -285,6 +306,10 @@ func (bot *Bot) handleCommandSettings(ctx *Context, command, args string) error 
 // Handler for startevent commnad
 func (bot *Bot) handleCommandStartEvent(ctx *Context, command, args string) error {
 	words := strings.Fields(args)
+
+	if len(words) != 2 {
+		return fmt.Errorf("insufficient arguments")
+	}
 	coins, err := strconv.Atoi(words[0])
 
 	if err != nil {
@@ -333,26 +358,6 @@ func (bot *Bot) handleCommandStopEvent(ctx *Context, command, args string) error
 	}
 
 	return bot.ReplyAboutEvent(ctx, "event stopped", event)
-}
-
-func (bot *Bot) handleCommandCurrentEvent(ctx *Context, banned bool) error {
-	users, err := bot.db.GetUsers(banned)
-
-	if err != nil {
-		return fmt.Errorf("failed to get users from db: %v", err)
-	}
-
-	var lines []string
-	for i, user := range users {
-		lines = append(lines, fmt.Sprintf(
-			"%d. %d: %s", (i+1), user.ID, user.NameAndTags(),
-		))
-	}
-	if len(lines) > 0 {
-		return bot.Reply(ctx, strings.Join(lines, "\n"))
-	} else {
-		return bot.Reply(ctx, "no users in the list")
-	}
 }
 
 // Handler for usercount command
@@ -416,7 +421,7 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 
 	words := strings.Fields(args)
 
-	if len(words) > 2 {
+	if len(words) != 2 {
 		return bot.Reply(ctx, "invalid number of arguments")
 	}
 
@@ -445,33 +450,36 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 	// Check if we already have winners for particular event
 	winnersAlready, err := bot.db.WinnersAlreadySelected(eventID)
 	if err != nil {
-		return bot.Reply(ctx, fmt.Sprintf("failed to get winners from db: %v", err))
+		return bot.Reply(ctx, fmt.Sprintf("failed to check existing winners in db: %v", err))
 	}
 
-	var winners []Participant
+	var winners []Winner
 	if winnersAlready {
 		winners, err = bot.db.GetParticipants(eventID, true)
 		if err != nil {
 			return fmt.Errorf("failed to get existing winners from db: %v", err)
 		}
 	} else {
-		var participants []Participant
+		var participants []Winner
 		participants, err = bot.db.GetParticipants(eventID, false)
 		if err != nil {
 			return fmt.Errorf("failed to get winners from db: %v", err)
 		}
 
 		// Select n random winners
+		if len(participants) < num {
+			num = len(participants)
+		}
 		winners = getRandomWinners(participants, num)
 
 		// Create a list of user ids
-		winnerList := make([]string, num)
+		winnerList := make([]int, num)
 		for _, winner := range winners {
-			winnerList = append(winnerList, strconv.Itoa(winner.UserID))
+			winnerList = append(winnerList, winner.UserID)
 		}
 
 		// Set winners
-		err = bot.db.SetWinners(eventID, strings.Join(winnerList, ","))
+		err = bot.db.SetWinners(eventID, SplitToString(winnerList[1:], ", "))
 		if err != nil {
 			return fmt.Errorf("failed to set winners in db: %v", err)
 		}
@@ -480,7 +488,7 @@ func (bot *Bot) handleCommandListWinners(ctx *Context, command, args string) err
 	var lines []string
 	for i, winner := range winners {
 		lines = append(lines, fmt.Sprintf(
-			"%d. %d: %s: coinswon -> %d, skyaddress -> (%s)", (i+1), winner.UserID, winner.UserName, winner.Coins, winner.Address,
+			"%d. %d(%s): coinswon -> %d, skyaddress -> (%s)", (i+1), winner.UserID, winner.UserName, winner.Coins, winner.Address.String,
 		))
 	}
 	if len(lines) > 0 {
@@ -526,8 +534,12 @@ func (bot *Bot) handleCommandResetWinners(ctx *Context, command, args string) er
 
 // Handler for registeraddress command
 func (bot *Bot) handleCommandRegisterAddress(ctx *Context, command, args string) error {
-	skyAddr := strings.Fields(args)[0]
+	words := strings.Fields(args)
+	if len(words) != 1 {
+		return fmt.Errorf("invalid number of arguments: %v", len(words))
+	}
 
+	skyAddr := words[0]
 	// Parse address to check validity
 	_, err := cipher.DecodeBase58Address(skyAddr)
 	if err != nil {
@@ -543,6 +555,21 @@ func (bot *Bot) handleCommandRegisterAddress(ctx *Context, command, args string)
 	return bot.Reply(ctx, fmt.Sprintf("Address %v registered!", skyAddr))
 }
 
+// Handler for showaddress command
+func (bot *Bot) handleCommandShowAddress(ctx *Context, command, args string) error {
+
+	skyAddr, err := bot.db.GetSkyAddr(ctx.User.ID)
+
+	if err != nil {
+		fmt.Errorf("failed to get sky address from db: %v", err)
+	}
+
+	if skyAddr == "" {
+		return bot.Reply(ctx, "No registered sky address")
+	}
+	return bot.Reply(ctx, fmt.Sprintf("You sky address is %s", skyAddr))
+}
+
 // Handler for listvars command
 func (bot *Bot) handleCommandListVars(ctx *Context, command, args string) error {
 	return bot.Reply(ctx, strings.Join(configVars, "\n"))
@@ -552,8 +579,8 @@ func (bot *Bot) handleCommandListVars(ctx *Context, command, args string) error 
 func (bot *Bot) handleCommandSetVar(ctx *Context, command, args string) error {
 	words := strings.Fields(args)
 
-	if len(args) != 2 {
-		return fmt.Errorf("invalid number of arguments: %v", len(args))
+	if len(words) != 2 {
+		return fmt.Errorf("invalid number of arguments: %v", len(words))
 	}
 
 	switch words[0] {
@@ -564,6 +591,7 @@ func (bot *Bot) handleCommandSetVar(ctx *Context, command, args string) error {
 		}
 
 		bot.config.AnnounceEvery = NewDuration(dur)
+		bot.Reschedule()
 	case configVars[1]:
 		dur, err := time.ParseDuration(words[1])
 		if err != nil {
@@ -571,26 +599,39 @@ func (bot *Bot) handleCommandSetVar(ctx *Context, command, args string) error {
 		}
 
 		bot.config.BotMsgAnnounceInterval = NewDuration(dur)
+	case configVars[2]:
+		msg := words[1:]
+
+		bot.config.BotRegisterMsg = strings.Join(msg, " ")
+		return bot.Reply(ctx, fmt.Sprintf("%s new value: %s", words[0], msg))
 	default:
 		return bot.Reply(ctx, "invalid config var")
 	}
 
-	return bot.Reply(ctx, fmt.Sprintf("%s new value: %s", words[0], words[1]))
+	configJson, _ := json.Marshal(bot.config)
+	err := ioutil.WriteFile("config.json", configJson, 0644)
+	if err != nil {
+		return fmt.Errorf("unable to write to json file: %v", err)
+	}
+
+	return bot.Send(ctx, "reply", "markdown", fmt.Sprintf("`%s` new value: `%s`", words[0], words[1]))
 }
 
 // Handler for getvar command
 func (bot *Bot) handleCommandGetVar(ctx *Context, command, args string) error {
 	words := strings.Fields(args)
 
-	if len(args) != 1 {
-		return fmt.Errorf("invalid number of arguments: %v", len(args))
+	if len(words) != 1 {
+		return fmt.Errorf("invalid number of arguments: %v", len(words))
 	}
 
 	switch words[0] {
 	case configVars[0]:
-		return bot.Reply(ctx, fmt.Sprintf("Current valie of %s is %s", words[0], bot.config.AnnounceEvery.Duration.String()))
+		return bot.Send(ctx, "reply", "markdown", fmt.Sprintf("Current value of `%s` is `%s`", configVars[0], bot.config.AnnounceEvery.Duration.String()))
 	case configVars[1]:
-		return bot.Reply(ctx, fmt.Sprintf("Current valie of %s is %s", words[1], bot.config.BotMsgAnnounceInterval.Duration.String()))
+		return bot.Send(ctx, "reply", "markdown", fmt.Sprintf("Current value of `%s` is `%s`", configVars[1], bot.config.BotMsgAnnounceInterval.Duration.String()))
+	case configVars[2]:
+		return bot.Send(ctx, "reply", "markdown", fmt.Sprintf("Current value of `%s` is `%s`", configVars[2], bot.config.BotRegisterMsg))
 	default:
 		return bot.Reply(ctx, "invalid config var")
 	}
